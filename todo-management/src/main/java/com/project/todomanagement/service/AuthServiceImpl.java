@@ -1,5 +1,6 @@
 package com.project.todomanagement.service;
 
+import com.project.todomanagement.dto.JwtAuthResponse;
 import com.project.todomanagement.dto.LoginDto;
 import com.project.todomanagement.dto.RegisterDto;
 import com.project.todomanagement.entity.Role;
@@ -7,7 +8,9 @@ import com.project.todomanagement.entity.User;
 import com.project.todomanagement.exception.TodoAPIException;
 import com.project.todomanagement.repository.RoleRepository;
 import com.project.todomanagement.repository.UserRepository;
+import com.project.todomanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -30,7 +34,7 @@ public class AuthServiceImpl implements AuthService{
 
     //dependencies for login
     private AuthenticationManager authenticationManager;
-
+    private JwtTokenProvider jwtTokenProvider;
 
     @Override
     public String register(RegisterDto registerDto) {
@@ -62,12 +66,33 @@ public class AuthServiceImpl implements AuthService{
     }
 
     @Override
-    public String login(LoginDto loginDto) {
+    public JwtAuthResponse login(LoginDto loginDto) {
         Authentication authentication=authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 loginDto.getUsernameOrEmail(),
                 loginDto.getPassword()
         ));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return "User logged in successfully";
+
+        String token = jwtTokenProvider.generateJwtToken(authentication);
+
+        Optional<User> userOptional= userRepository.findByUsernameOrEmail(loginDto.getUsernameOrEmail(),
+                loginDto.getUsernameOrEmail());
+
+        String role = null;
+        if(userOptional.isPresent()){
+            User logInUser = userOptional.get();
+            Optional<Role> optionalRole = logInUser.getRoles().stream().findFirst();
+
+            if(optionalRole.isPresent()){
+                Role userRole = optionalRole.get();
+                role=userRole.getName();
+            }
+        }
+
+        JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();
+        jwtAuthResponse.setRole(role);
+        jwtAuthResponse.setAccessToken(token);
+
+        return jwtAuthResponse;
     }
 }

@@ -1,5 +1,7 @@
 package com.project.todomanagement.config;
 
+import com.project.todomanagement.security.JwtAuthenticationEntryPoint;
+import com.project.todomanagement.security.JwtAuthenticationFilter;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @EnableMethodSecurity
 @Configuration
@@ -24,6 +27,10 @@ import org.springframework.security.web.SecurityFilterChain;
 public class TodoConfiguration {
 
     private UserDetailsService userDetailsService;
+
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,6 +52,10 @@ public class TodoConfiguration {
 
                     authorize.anyRequest().authenticated();
                 }).httpBasic(Customizer.withDefaults());
+
+        http.exceptionHandling(exception -> exception.authenticationEntryPoint((jwtAuthenticationEntryPoint)));
+
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
